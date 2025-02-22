@@ -1,0 +1,43 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  jobs:
+  - job: RestoreAndBuild
+    displayName: 'Restore and Build'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '5.x'
+        installationPath: $(Agent.ToolsDirectory)/dotnet
+
+    - script: |
+        dotnet restore
+        dotnet build --configuration $(buildConfiguration)
+      displayName: 'Restore and Build'
+
+- stage: Test
+  dependsOn: Build
+  jobs:
+  - job: RunTests
+    displayName: 'Run Tests'
+    steps:
+    - script: dotnet test --configuration $(buildConfiguration) --no-build --verbosity normal
+      displayName: 'Run Tests'
+
+- stage: Publish
+  dependsOn: Test
+  jobs:
+  - job: Publish
+    displayName: 'Publish Artifacts'
+    steps:
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: drop
